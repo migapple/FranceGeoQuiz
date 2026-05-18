@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>France Quiz — Régions &amp; Départements</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--card:#1c2333;--gold:#d4a843;--gold2:#f0c96a;--green:#22c55e;--red:#ef4444;--text:#e6edf3;--muted:#7d8590;--border:#30363d}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;overflow:hidden;background:var(--bg);font-family:Georgia,serif}
+#app{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg)}
+.header{padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:9px;padding-left:16px;padding-right:16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-size:16px;color:var(--gold);font-weight:bold}
+.hdr-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.score-wrap{display:flex;gap:8px}
+.sbox{text-align:center}
+.snum{font-size:20px;font-weight:bold;line-height:1}
+.slbl{font-size:8px;color:var(--muted);margin-top:1px}
+.ok .snum, .snum.ok{color:var(--green)}.snum.ok2{color:#f0c96a}.snum.ok3{color:#4d908e}
+.phase-bar{display:flex;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
+.ps{flex:1;padding:7px 4px;text-align:center;font-size:10px;color:var(--muted);border:none;border-bottom:2px solid transparent;line-height:1.4;background:none;cursor:pointer;font-family:Georgia,serif}
+.ps.active{color:var(--gold);border-bottom-color:var(--gold);font-weight:bold}
+.prog-wrap{height:3px;background:var(--border);flex-shrink:0}
+.prog-fill{height:100%;background:var(--gold);transition:width .4s}
+.q-banner{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;flex-shrink:0;min-height:48px;display:flex;align-items:center;justify-content:center}
+.q-text{font-size:14px;color:var(--text);text-align:center;line-height:1.5}
+.q-hl{color:var(--gold2);font-weight:bold}
+.q-ctx{font-size:11px;color:var(--muted);display:block;margin-top:2px}
+.map-wrap{flex:1;position:relative;overflow:hidden}
+#map{width:100%;height:100%}
+.leaflet-container{background:#e8e4dc!important}
+.leaflet-interactive{pointer-events:auto!important}
+.leaflet-overlay-pane svg path{pointer-events:visiblePainted!important}
+.leaflet-control-zoom{display:none}
+.leaflet-control-attribution{font-size:8px;opacity:.2;background:rgba(0,0,0,.6)!important;color:#888!important}
+.fb-bar{background:var(--surface);border-top:1px solid var(--border);padding:11px 14px;padding-bottom:calc(11px + env(safe-area-inset-bottom));flex-shrink:0;text-align:center;font-size:12px;color:var(--muted);min-height:52px;display:flex;align-items:center;justify-content:center;line-height:1.5}
+.fb-bar.ok{color:var(--green)}.fb-bar.ko{color:var(--red)}.fb-bar.hint{color:var(--gold)}
+.pm{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border:2px solid rgba(255,255,255,.4);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.pm.idle{background:rgba(59,130,246,.85)}.pm.done{background:rgba(80,80,80,.7)}.pm.ok{background:rgba(34,197,94,.9);border-color:#86efac}.pm.ko{background:rgba(239,68,68,.9);border-color:#fca5a5}
+.ov{position:absolute;inset:0;background:rgba(13,17,23,.93);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:2000;gap:14px;padding:32px;text-align:center}
+.ov.show{display:flex}
+.ov-emoji{font-size:52px}.ov-title{font-size:21px;color:var(--gold2);font-weight:bold}.ov-reg{font-size:13px;color:var(--gold)}.ov-msg{font-size:14px;color:var(--text);line-height:1.6;max-width:280px}
+.ov-btn{background:var(--gold);color:#0d1117;border:none;border-radius:22px;padding:12px 32px;font-size:15px;font-weight:bold;cursor:pointer;font-family:Georgia,serif;margin-top:6px}
+.rsel{position:absolute;inset:0;background:rgba(13,17,23,.97);z-index:3000;display:flex;flex-direction:column;padding:16px;overflow-y:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.rsel-title{font-size:14px;color:var(--gold2);font-weight:bold;margin-bottom:12px;text-align:center;flex-shrink:0}
+.rsel-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rsel-btn{background:var(--card);border:1.5px solid var(--border);border-radius:10px;padding:12px 8px;font-size:12px;color:var(--text);cursor:pointer;font-family:Georgia,serif;line-height:1.3;text-align:center}
+.rsel-cancel{margin-top:12px;background:none;border:1px solid var(--border);border-radius:20px;padding:10px 24px;font-size:13px;color:var(--muted);cursor:pointer;font-family:Georgia,serif;flex-shrink:0;align-self:center}
+.r-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);width:100%;max-width:280px}
+.load-ov{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:4000;gap:14px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div><div class="hdr-title">🗺 France Quiz</div><div class="hdr-sub" id="hdr-sub">Régions</div></div>
+    <div class="score-wrap">
+      <div class="sbox"><div class="snum" id="sc1" style="color:var(--green);font-size:12px">0✓ 0✗</div><div class="slbl">Régions</div></div>
+      <div class="sbox"><div class="snum" id="sc2" style="color:var(--gold2);font-size:12px">0✓ 0✗</div><div class="slbl">Dépts</div></div>
+      <div class="sbox"><div class="snum" id="sc3" style="color:#4d908e;font-size:12px">0✓ 0✗</div><div class="slbl">Chefs-l.</div></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button onclick="raz()" style="font-size:10px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:10px;padding:4px 8px;cursor:pointer;font-family:Georgia,serif">RAZ</button>
+      <button onclick="showSettings()" style="font-size:18px;background:none;border:none;cursor:pointer;padding:2px">📱</button>
+    </div>
+  </div>
+  <div class="phase-bar">
+    <button class="ps active" id="ps1" onclick="jumpToPhase(1)">🗺<br>Régions</button>
+    <button class="ps" id="ps2" onclick="jumpToPhase(2)">🏛<br>Départements</button>
+    <button class="ps" id="ps3" onclick="jumpToPhase(3)">📍<br>Chefs-lieux</button>
+  </div>
+  <div class="prog-wrap"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+  <div class="q-banner"><div class="q-text" id="q-text">Chargement…</div></div>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="load-ov" id="load-ov"><div class="spinner"></div><div class="load-txt">Chargement…</div></div>
+    <div class="ov" id="res-ov">
+      <div class="ov-emoji" id="r-emoji">🏆</div>
+      <div class="ov-title" id="r-score"></div>
+      <div class="ov-msg" style="color:var(--muted);font-size:12px">bonnes réponses</div>
+      <div id="r-bd" style="width:100%"></div>
+      <div class="ov-msg" id="r-msg"></div>
+      <button class="ov-btn" onclick="jumpToPhase(phase)">🔄 Rejouer</button>
+    </div>
+  </div>
+  <div class="fb-bar hint" id="fb-bar">Tapez sur la bonne zone</div>
+</div>
+<script>
+const REGIONS=[
+  {code:'84',name:'Auvergne-Rhône-Alpes',color:'#e63946'},
+  {code:'27',name:'Bourgogne-Franche-Comté',color:'#4a90d9'},
+  {code:'53',name:'Bretagne',color:'#2a9d8f'},
+  {code:'24',name:'Centre-Val de Loire',color:'#c9a227'},
+  {code:'94',name:'Corse',color:'#f4a261'},
+  {code:'44',name:'Grand Est',color:'#e76f51'},
+  {code:'32',name:'Hauts-de-France',color:'#9b5de5'},
+  {code:'11',name:'Île-de-France',color:'#1982c4'},
+  {code:'28',name:'Normandie',color:'#8ac926'},
+  {code:'75',name:'Nouvelle-Aquitaine',color:'#ff595e'},
+  {code:'76',name:'Occitanie',color:'#d4a017'},
+  {code:'52',name:'Pays de la Loire',color:'#6bcb77'},
+  {code:'93',name:"Provence-Alpes-Côte d'Azur",color:'#4d908e'},
+];
+const DEPTS=[
+  {code:'01',name:'Ain',region:'84',lat:46.20,lng:5.23},
+  {code:'02',name:'Aisne',region:'32',lat:49.57,lng:3.62},
+  {code:'03',name:'Allier',region:'84',lat:46.57,lng:3.34},
+  {code:'04',name:'Alpes-de-Haute-Provence',region:'93',lat:44.09,lng:6.24},
+  {code:'05',name:'Hautes-Alpes',region:'93',lat:44.56,lng:6.08},
+  {code:'06',name:'Alpes-Maritimes',region:'93',lat:43.71,lng:7.26},
+  {code:'07',name:'Ardèche',region:'84',lat:44.66,lng:4.66},
+  {code:'08',name:'Ardennes',region:'44',lat:49.77,lng:4.72},
+  {code:'09',name:'Ariège',region:'76',lat:43.05,lng:1.61},
+  {code:'10',name:'Aube',region:'44',lat:48.30,lng:4.08},
+  {code:'11',name:'Aude',region:'76',lat:43.21,lng:2.35},
+  {code:'12',name:'Aveyron',region:'76',lat:44.35,lng:2.57},
+  {code:'13',name:'Bouches-du-Rhône',region:'93',lat:43.53,lng:5.45},
+  {code:'14',name:'Calvados',region:'28',lat:49.18,lng:-0.36},
+  {code:'15',name:'Cantal',region:'84',lat:45.04,lng:2.76},
+  {code:'16',name:'Charente',region:'75',lat:45.65,lng:0.16},
+  {code:'17',name:'Charente-Maritime',region:'75',lat:45.75,lng:-0.63},
+  {code:'18',name:'Cher',region:'24',lat:47.08,lng:2.40},
+  {code:'19',name:'Corrèze',region:'75',lat:45.27,lng:1.77},
+  {code:'2A',name:'Corse-du-Sud',region:'94',lat:41.92,lng:8.74},
+  {code:'2B',name:'Haute-Corse',region:'94',lat:42.50,lng:9.45},
+  {code:'21',name:"Côte-d'Or",region:'27',lat:47.32,lng:5.04},
+  {code:'22',name:"Côtes-d'Armor",region:'53',lat:48.51,lng:-2.76},
+  {code:'23',name:'Creuse',region:'75',lat:46.00,lng:2.02},
+  {code:'24',name:'Dordogne',region:'75',lat:45.18,lng:0.72},
+  {code:'25',name:'Doubs',region:'27',lat:47.24,lng:6.02},
+  {code:'26',name:'Drôme',region:'84',lat:44.73,lng:4.92},
+  {code:'27',name:'Eure',region:'28',lat:49.10,lng:1.15},
+  {code:'28',name:'Eure-et-Loir',region:'24',lat:48.45,lng:1.49},
+  {code:'29',name:'Finistère',region:'53',lat:48.39,lng:-4.49},
+  {code:'30',name:'Gard',region:'76',lat:43.84,lng:4.36},
+  {code:'31',name:'Haute-Garonne',region:'76',lat:43.60,lng:1.44},
+  {code:'32',name:'Gers',region:'76',lat:43.65,lng:0.59},
+  {code:'33',name:'Gironde',region:'75',lat:44.84,lng:-0.58},
+  {code:'34',name:'Hérault',region:'76',lat:43.61,lng:3.88},
+  {code:'35',name:'Ille-et-Vilaine',region:'53',lat:48.11,lng:-1.68},
+  {code:'36',name:'Indre',region:'24',lat:46.81,lng:1.69},
+  {code:'37',name:'Indre-et-Loire',region:'24',lat:47.39,lng:0.69},
+  {code:'38',name:'Isère',region:'84',lat:45.19,lng:5.72},
+  {code:'39',name:'Jura',region:'27',lat:46.67,lng:5.55},
+  {code:'40',name:'Landes',region:'75',lat:43.89,lng:-0.50},
+  {code:'41',name:'Loir-et-Cher',region:'24',lat:47.59,lng:1.34},
+  {code:'42',name:'Loire',region:'84',lat:45.43,lng:4.39},
+  {code:'43',name:'Haute-Loire',region:'84',lat:45.04,lng:3.88},
+  {code:'44',name:'Loire-Atlantique',region:'52',lat:47.22,lng:-1.55},
+  {code:'45',name:'Loiret',region:'24',lat:47.90,lng:1.90},
+  {code:'46',name:'Lot',region:'76',lat:44.45,lng:1.44},
+  {code:'47',name:'Lot-et-Garonne',region:'75',lat:44.35,lng:0.62},
+  {code:'48',name:'Lozère',region:'76',lat:44.52,lng:3.50},
+  {code:'49',name:'Maine-et-Loire',region:'52',lat:47.47,lng:-0.55},
+  {code:'50',name:'Manche',region:'28',lat:49.12,lng:-1.24},
+  {code:'51',name:'Marne',region:'44',lat:49.05,lng:4.36},
+  {code:'52',name:'Haute-Marne',region:'44',lat:48.11,lng:5.14},
+  {code:'53',name:'Mayenne',region:'52',lat:48.30,lng:-0.62},
+  {code:'54',name:'Meurthe-et-Moselle',region:'44',lat:48.69,lng:6.18},
+  {code:'55',name:'Meuse',region:'44',lat:49.16,lng:5.38},
+  {code:'56',name:'Morbihan',region:'53',lat:47.66,lng:-2.76},
+  {code:'57',name:'Moselle',region:'44',lat:49.12,lng:6.18},
+  {code:'58',name:'Nièvre',region:'27',lat:47.00,lng:3.32},
+  {code:'59',name:'Nord',region:'32',lat:50.62,lng:3.06},
+  {code:'60',name:'Oise',region:'32',lat:49.42,lng:2.42},
+  {code:'61',name:'Orne',region:'28',lat:48.43,lng:0.09},
+  {code:'62',name:'Pas-de-Calais',region:'32',lat:50.51,lng:2.13},
+  {code:'63',name:'Puy-de-Dôme',region:'84',lat:45.78,lng:3.08},
+  {code:'64',name:'Pyrénées-Atlantiques',region:'75',lat:43.30,lng:-0.37},
+  {code:'65',name:'Hautes-Pyrénées',region:'76',lat:43.23,lng:0.07},
+  {code:'66',name:'Pyrénées-Orientales',region:'76',lat:42.70,lng:2.89},
+  {code:'67',name:'Bas-Rhin',region:'44',lat:48.58,lng:7.75},
+  {code:'68',name:'Haut-Rhin',region:'44',lat:47.75,lng:7.34},
+  {code:'69',name:'Rhône',region:'84',lat:45.75,lng:4.85},
+  {code:'70',name:'Haute-Saône',region:'27',lat:47.62,lng:6.16},
+  {code:'71',name:'Saône-et-Loire',region:'27',lat:46.30,lng:4.83},
+  {code:'72',name:'Sarthe',region:'52',lat:48.00,lng:0.20},
+  {code:'73',name:'Savoie',region:'84',lat:45.57,lng:6.52},
+  {code:'74',name:'Haute-Savoie',region:'84',lat:46.11,lng:6.13},
+  {code:'75',name:'Paris',region:'11',lat:48.86,lng:2.35},
+  {code:'76',name:'Seine-Maritime',region:'28',lat:49.44,lng:1.10},
+  {code:'77',name:'Seine-et-Marne',region:'11',lat:48.54,lng:2.91},
+  {code:'78',name:'Yvelines',region:'11',lat:48.80,lng:1.99},
+  {code:'79',name:'Deux-Sèvres',region:'75',lat:46.32,lng:-0.46},
+  {code:'80',name:'Somme',region:'32',lat:49.92,lng:2.30},
+  {code:'81',name:'Tarn',region:'76',lat:43.93,lng:2.15},
+  {code:'82',name:'Tarn-et-Garonne',region:'76',lat:44.02,lng:1.35},
+  {code:'83',name:'Var',region:'93',lat:43.12,lng:6.13},
+  {code:'84',name:'Vaucluse',region:'93',lat:43.95,lng:5.05},
+  {code:'85',name:'Vendée',region:'52',lat:46.67,lng:-1.43},
+  {code:'86',name:'Vienne',region:'75',lat:46.58,lng:0.34},
+  {code:'87',name:'Haute-Vienne',region:'75',lat:45.83,lng:1.26},
+  {code:'88',name:'Vosges',region:'44',lat:48.19,lng:6.45},
+  {code:'89',name:'Yonne',region:'27',lat:47.80,lng:3.57},
+  {code:'90',name:'Territoire de Belfort',region:'27',lat:47.64,lng:6.87},
+  {code:'91',name:'Essonne',region:'11',lat:48.63,lng:2.24},
+  {code:'92',name:'Hauts-de-Seine',region:'11',lat:48.89,lng:2.22},
+  {code:'93',name:'Seine-Saint-Denis',region:'11',lat:48.91,lng:2.49},
+  {code:'94',name:'Val-de-Marne',region:'11',lat:48.79,lng:2.47},
+  {code:'95',name:"Val-d'Oise",region:'11',lat:49.07,lng:2.07},
+];
+const PREFS={
+  '01':'Bourg-en-Bresse','02':'Laon','03':'Moulins','04':'Digne-les-Bains','05':'Gap',
+  '06':'Nice','07':'Privas','08':'Charleville-Mézières','09':'Foix','10':'Troyes',
+  '11':'Carcassonne','12':'Rodez','13':'Marseille','14':'Caen','15':'Aurillac',
+  '16':'Angoulême','17':'La Rochelle','18':'Bourges','19':'Tulle','2A':'Ajaccio',
+  '2B':'Bastia','21':'Dijon','22':'Saint-Brieuc','23':'Guéret','24':'Périgueux',
+  '25':'Besançon','26':'Valence','27':'Évreux','28':'Chartres','29':'Quimper',
+  '30':'Nîmes','31':'Toulouse','32':'Auch','33':'Bordeaux','34':'Montpellier',
+  '35':'Rennes','36':'Châteauroux','37':'Tours','38':'Grenoble','39':'Lons-le-Saunier',
+  '40':'Mont-de-Marsan','41':'Blois','42':'Saint-Étienne','43':'Le Puy-en-Velay','44':'Nantes',
+  '45':'Orléans','46':'Cahors','47':'Agen','48':'Mende','49':'Angers',
+  '50':'Saint-Lô','51':'Châlons-en-Champagne','52':'Chaumont','53':'Laval','54':'Nancy',
+  '55':'Bar-le-Duc','56':'Vannes','57':'Metz','58':'Nevers','59':'Lille',
+  '60':'Beauvais','61':'Alençon','62':'Arras','63':'Clermont-Ferrand','64':'Pau',
+  '65':'Tarbes','66':'Perpignan','67':'Strasbourg','68':'Colmar','69':'Lyon',
+  '70':'Vesoul','71':'Mâcon','72':'Le Mans','73':'Chambéry','74':'Annecy',
+  '75':'Paris','76':'Rouen','77':'Melun','78':'Versailles','79':'Niort',
+  '80':'Amiens','81':'Albi','82':'Montauban','83':'Toulon','84':'Avignon',
+  '85':'La Roche-sur-Yon','86':'Poitiers','87':'Limoges','88':'Épinal','89':'Auxerre',
+  '90':'Belfort','91':'Évry-Courcouronnes','92':'Nanterre','93':'Bobigny','94':'Créteil','95':'Cergy',
+};
+
+// ===== STATE =====
+let map, rGeo, dGeo, gLayer=null, markers=[];
+let phase=1, cur=null, answered=false;
+let scores={1:{ok:0,ko:0},2:{ok:0,ko:0},3:{ok:0,ko:0}};
+let used=[], found=new Set();
+let _touchSX=0, _touchSY=0, _geoClickFn=null;
+
+const rInfo=c=>REGIONS.find(r=>r.code===c)||{color:'#888',name:'?'};
+const dInfo=c=>DEPTS.find(d=>d.code===c)||{name:'?',region:''};
+const dCol=c=>rInfo(dInfo(c).region).color;
+
+// ===== INIT =====
+async function init(){
+  map=L.map('map',{zoomControl:false,dragging:true,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:true,tap:true,tapTolerance:15});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:13}).addTo(map);
+  map.setView([46.5,2.3],5);
+  initTouch();
+  try{
+    const [a,b]=await Promise.all([
+      fetch('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/regions-version-simplifiee.geojson'),
+      fetch('https://raw.githubusercontent.com/gregoiredavid/france-geojson/master/departements-version-simplifiee.geojson')
+    ]);
+    [rGeo,dGeo]=await Promise.all([a.json(),b.json()]);
+    rGeo.features=rGeo.features.filter(f=>REGIONS.some(r=>r.code===f.properties.code));
+    dGeo.features=dGeo.features.filter(f=>DEPTS.some(d=>d.code===f.properties.code));
+    document.getElementById('load-ov').style.display='none';
+    jumpToPhase(1);
+  }catch(e){
+    document.getElementById('load-ov').innerHTML='<div style="color:#ef4444;text-align:center;padding:32px">Erreur de chargement.<br>Vérifiez votre connexion.</div>';
+  }
+}
+
+// ===== TOUCH HANDLER (Safari fix) =====
+function initTouch(){
+  const c=map.getContainer();
+  c.addEventListener('touchstart',e=>{if(e.touches.length){_touchSX=e.touches[0].clientX;_touchSY=e.touches[0].clientY;}},{passive:true});
+  c.addEventListener('touchend',e=>{
+    if(!e.changedTouches.length)return;
+    const t=e.changedTouches[0];
+    if(Math.abs(t.clientX-_touchSX)>10||Math.abs(t.clientY-_touchSY)>10)return;
+    const rect=c.getBoundingClientRect();
+    const ll=map.containerPointToLatLng([t.clientX-rect.left,t.clientY-rect.top]);
+    if(!gLayer||!_geoClickFn)return;
+    let hit=false;
+    gLayer.eachLayer(l=>{
+      if(hit||!l.feature)return;
+      try{if(l.getBounds().contains(ll)&&ptInLayer(ll,l)){hit=true;_geoClickFn(l.feature.properties.code);}}catch(e){}
+    });
+  },{passive:true});
+}
+function ptInLayer(ll,l){
+  const g=l.feature.geometry,pt=[ll.lng,ll.lat];
+  const polys=g.type==='MultiPolygon'?g.coordinates:g.type==='Polygon'?[g.coordinates]:[];
+  return polys.some(p=>ptInRing(pt,p[0]));
+}
+function ptInRing(pt,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+    if(((yi>pt[1])!==(yj>pt[1]))&&pt[0]<(xj-xi)*(pt[1]-yi)/(yj-yi)+xi)inside=!inside;
+  }
+  return inside;
+}
+
+// ===== LAYER =====
+function buildLayer(geoData, clickFn, styleFn){
+  if(gLayer){gLayer.remove();gLayer=null;}
+  _geoClickFn=clickFn;
+  gLayer=L.geoJSON(geoData,{
+    style:f=>styleFn(f.properties.code),
+    onEachFeature:(f,l)=>l.on('click',e=>{L.DomEvent.stop(e);clickFn(f.properties.code);})
+  }).addTo(map);
+}
+function setS(code,s){gLayer&&gLayer.eachLayer(l=>{if(l.feature.properties.code===code)l.setStyle(s);});}
+function fitAll(){map.setView([46.8,2.3],5.5);}
+
+const sOK={fillColor:'#22c55e',fillOpacity:.82,color:'#86efac',weight:3,opacity:1};
+const sKO={fillColor:'#ef4444',fillOpacity:.72,color:'#fca5a5',weight:3,opacity:1};
+function srR(c){const col=rInfo(c).color;const f=found.has(c);return{fillColor:col,fillOpacity:f?.55:.38,color:'#fff',weight:f?2:1.5,opacity:.6};}
+function srD(c){const col=dCol(c);const f=found.has(c);return{fillColor:col,fillOpacity:f?.55:.38,color:'#fff',weight:f?2:1,opacity:.55};}
+
+// ===== PHASE SWITCH =====
+function jumpToPhase(p){
+  phase=p; used=[]; found=new Set(); answered=false; clearMarkers();
+  scores[p]={ok:0,ko:0};
+  document.getElementById('sc'+p).textContent='0✓ 0✗';
+  document.getElementById('res-ov').classList.remove('show');
+  [1,2,3].forEach(n=>{document.getElementById('ps'+n).classList.remove('active');});
+  document.getElementById('ps'+p).classList.add('active');
+  const subs=['','Régions','Départements','Chefs-lieux'];
+  document.getElementById('hdr-sub').textContent=subs[p];
+
+  if(p===1){
+    buildLayer(rGeo,clickR,srR);
+    fitAll();
+    nextQ();
+  } else if(p===2){
+    buildLayer(dGeo,clickD,srD);
+    fitAll();
+    nextQ();
+  } else {
+    // Phase 3 : layer dept non interactif + marqueurs
+    if(gLayer){gLayer.remove();gLayer=null;}_geoClickFn=null;
+    gLayer=L.geoJSON(dGeo,{style:f=>srD(f.properties.code)}).addTo(map);
+    fitAll();
+    buildMarkers();
+    nextQ();
+  }
+  document.getElementById('prog').style.width='0%';
+}
+
+// ===== QUESTIONS =====
+function nextQ(){
+  answered=false;
+  fb('hint','Tapez sur la bonne zone');
+  const dataset=phase===1?REGIONS:DEPTS;
+  const total=dataset.length;
+  if(used.length>=total){used=[];found=new Set();if(phase===3)buildMarkers();}
+  const rem=dataset.filter(x=>!used.includes(x.code));
+  cur=rem[Math.floor(Math.random()*rem.length)];
+  used.push(cur.code);
+  document.getElementById('prog').style.width=(used.length/total*100)+'%';
+
+  if(phase===1){
+    qt('Où se trouve <span class="q-hl">'+cur.name+'</span> ?');
+    fb('hint','Tapez sur la bonne région');
+  } else if(phase===2){
+    qt('Où se trouve <span class="q-hl">'+cur.name+'</span> ?<span class="q-ctx">n°'+cur.code+' — '+rInfo(cur.region).name+'</span>');
+    fb('hint','Tapez sur le bon département');
+  } else {
+    updateMarkers();
+    qt('Où se trouve <span class="q-hl">'+PREFS[cur.code]+'</span> ?<span class="q-ctx">Préfecture du '+cur.name+' ('+cur.code+')</span>');
+    fb('hint','Tapez sur le marqueur 📍 correspondant');
+  }
+}
+
+// ===== CLICS =====
+function clickR(code){
+  if(answered)return; answered=true;
+  if(code===cur.code){
+    setS(code,sOK); found.add(code);
+    fb('ok','✓ '+cur.name); scores[1].ok++;
+  } else {
+    setS(code,sKO); setS(cur.code,sOK); found.add(cur.code);
+    fb('ko','✗ '+rInfo(code).name+' — '+cur.name); scores[1].ko++;
+  }
+  document.getElementById('sc1').textContent=scores[1].ok+'✓ '+scores[1].ko+'✗';
+  setTimeout(nextQ,1200);
+}
+
+function clickD(code){
+  if(answered)return; answered=true;
+  if(code===cur.code){
+    setS(code,sOK); found.add(code);
+    fb('ok','✓ '+cur.name+' ('+cur.code+')'); scores[2].ok++;
+  } else {
+    setS(code,sKO); setS(cur.code,sOK); found.add(cur.code);
+    fb('ko','✗ '+dInfo(code).name+' — '+cur.name+' ('+cur.code+')'); scores[2].ko++;
+  }
+  document.getElementById('sc2').textContent=scores[2].ok+'✓ '+scores[2].ko+'✗';
+  setTimeout(nextQ,1200);
+}
+
+function clickP(code){
+  if(answered)return; answered=true;
+  if(code===cur.code){
+    setMarkerCls(code,'ok'); found.add(code);
+    fb('ok','✓ '+PREFS[code]+' — '+cur.name); scores[3].ok++;
+  } else {
+    setMarkerCls(code,'ko'); setMarkerCls(cur.code,'ok'); found.add(cur.code);
+    fb('ko','✗ '+PREFS[code]+' — Réponse : '+PREFS[cur.code]); scores[3].ko++;
+  }
+  document.getElementById('sc3').textContent=scores[3].ok+'✓ '+scores[3].ko+'✗';
+  setTimeout(nextQ,1200);
+}
+
+// ===== MARQUEURS =====
+function buildMarkers(){
+  clearMarkers();
+  DEPTS.forEach(d=>{
+    const m=L.marker([d.lat,d.lng],{
+      icon:L.divIcon({className:'',html:'<div class="pm idle" id="pm-'+d.code+'">📍</div>',iconSize:[32,32],iconAnchor:[16,16]}),
+      interactive:true,bubblingMouseEvents:false,zIndexOffset:500
+    }).addTo(map);
+    m.on('click',e=>{L.DomEvent.stop(e);clickP(d.code);});
+    m._dc=d.code;
+    markers.push(m);
+  });
+}
+function updateMarkers(){
+  markers.forEach(m=>{
+    const el=document.getElementById('pm-'+m._dc);
+    if(el)el.className='pm '+(found.has(m._dc)?'done':'idle');
+  });
+}
+function setMarkerCls(code,cls){const el=document.getElementById('pm-'+code);if(el)el.className='pm '+cls;}
+function clearMarkers(){markers.forEach(m=>m.remove());markers=[];}
+
+// ===== UTILS =====
+function raz(){
+  scores={1:{ok:0,ko:0},2:{ok:0,ko:0},3:{ok:0,ko:0}};
+  ['1','2','3'].forEach(n=>document.getElementById('sc'+n).textContent='0✓ 0✗');
+}
+
+function showSettings(){
+  const existing=document.getElementById('settings-ov');
+  if(existing){existing.remove();return;}
+  const APPS=[
+    {id:'6763507194',name:'Hotels RoofTop'},{id:'6762618424',name:'Ponts du Monde'},
+    {id:'6763076110',name:'Paquebots Liners'},{id:'6763069304',name:'Avions de Legende'},
+    {id:'6763071567',name:'Voitures de Legende'},{id:'6762077646',name:'Flip Board'},
+    {id:'6762632868',name:'Trains Mythiques'},{id:'6762823383',name:'Chateaux Loire'},
+    {id:'6762598304',name:'Mers & Oceans'},{id:'6762594201',name:'Detroits'},
+    {id:'6762558969',name:'ColorCode Mind'},{id:'6762552826',name:'Lexigo'},
+    {id:'6762542395',name:'Conquetes Sociales'},{id:'6762522136',name:'Dynasties Chinoises'},
+    {id:'6762452564',name:'Dynasties Russes'},{id:'6762370541',name:'Etats-Unis'},
+    {id:'6762091681',name:'Bataille Navale'},{id:'6762098486',name:'Familles Royales'},
+    {id:'6762263227',name:'Leaders Europeens'},{id:'6762346365',name:'Pays UE'},
+    {id:'6762256169',name:'Presidents Americains'},{id:'6762076518',name:'Dames Checkers'},
+    {id:'6761993002',name:'Comedie Francaise'},{id:'6761769529',name:'Institut de France'},
+    {id:'6761324444',name:'Presidents Francais'},{id:'6761709149',name:'Basilique St-Denis'},
+    {id:'6761685637',name:'Arbres de France'},{id:'6761363063',name:'Senat Paris'},
+    {id:'6761656628',name:'Compositeurs'},{id:'6761374601',name:'Marechaux Napoleon'},
+    {id:'6761322546',name:'Rois de France'},{id:'6761361079',name:'Assemblee Paris'},
+    {id:'6761335268',name:'Pantheon Paris'},{id:'1483084001',name:'Belote Calc'},
+    {id:'6760751055',name:'Cimetieres Paris'},{id:'1481989301',name:'Tarots Calc'},
+    {id:'6761334922',name:'Academie francaise'},{id:'6761293938',name:'Scenes Paris'},
+    {id:'6761271324',name:'MediSafe'},{id:'6760617965',name:'MesRestaurants'},
+    {id:'6760126279',name:'Cave Manager'},{id:'6760890465',name:'Musees Paris'},
+    {id:'6760929391',name:'Theatres Paris'},{id:'6759219383',name:'FreshFood Manager'},
+    {id:'1475884625',name:'Toi ou Moi'},{id:'6761421276',name:'Capitales Europe'},
+    {id:'6767135193',name:'Auteurs de BD'},{id:'6766260978',name:'Histoire Info'},
+    {id:'6766261703',name:'Micro-Info'},{id:'6767492967',name:'Institutions Mondiales'},
+    {id:'6767273597',name:'Machines Leg.'},{id:'6767810270',name:'Iles du Monde'},
+    {id:'6768003416',name:'Explorateurs'},{id:'6768068634',name:'Peintres Celebres'},
+    {id:'6768320574',name:'Legion Honneur'},{id:'6762208827',name:'Dynasties Royales'},
+    {id:'6768574161',name:'Tuiles Numeriques'},{id:'6769310796',name:'App Solitaire'},
+    {id:'6764087562',name:'Aeroports Mythiques'},{id:'6763569148',name:'Nobels de la Paix'},
+    {id:'6763857843',name:'Gratte-Ciels'},
+  ];
+  const ov=document.createElement('div');
+  ov.id='settings-ov';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(13,17,23,.97);z-index:9000;display:flex;flex-direction:column;padding-top:calc(12px + env(safe-area-inset-top));padding-bottom:calc(12px + env(safe-area-inset-bottom))';
+  ov.innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 16px 12px">
+      <div style="font-size:15px;color:var(--gold2);font-weight:bold">Mes Applications</div>
+      <button onclick="document.getElementById('settings-ov').remove()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer">✕</button>
+    </div>
+    <div id="apps-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:0 12px;overflow-y:auto;flex:1"></div>
+    <div style="padding:16px;text-align:center">
+      <img src="https://tools.applemediaservices.com/api/badges/download-on-the-app-store/black/fr-fr" style="height:36px">
+    </div>`;
+  document.body.appendChild(ov);
+  const grid=document.getElementById('apps-grid');
+  APPS.forEach(app=>{
+    const item=document.createElement('div');
+    item.style.cssText='display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer';
+    item.onclick=()=>window.open('https://apps.apple.com/app/id'+app.id,'_blank');
+    const img=document.createElement('img');
+    img.style.cssText='width:56px;height:56px;border-radius:13px;background:var(--card)';
+    img.src='https://itunes.apple.com/lookup?id='+app.id+'&entity=software';
+    // JSONP pour icône
+    const cbName='cb'+app.id;
+    window[cbName]=function(d){if(d.results&&d.results[0])img.src=d.results[0].artworkUrl60;};
+    const s=document.createElement('script');
+    s.src='https://itunes.apple.com/lookup?id='+app.id+'&callback='+cbName;
+    document.body.appendChild(s);
+    const lbl=document.createElement('div');
+    lbl.textContent=app.name;
+    lbl.style.cssText='font-size:9px;color:var(--muted);text-align:center;line-height:1.2;max-width:64px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical';
+    item.appendChild(img);item.appendChild(lbl);
+    grid.appendChild(item);
+  });
+}
+
+function fb(cls,txt){const el=document.getElementById('fb-bar');el.className='fb-bar '+cls;el.textContent=txt;}
+function qt(html){document.getElementById('q-text').innerHTML=html;}
+
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
